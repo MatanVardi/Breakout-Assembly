@@ -2,26 +2,33 @@
 .stack 100h
 
 
-.data
-	msg db 'Hello world!$'
-
-
 .code 
 
+SetGraphic proc 
+	push ax
+	mov ax, 13h
+	int 10h
+	pop ax
+	ret
+SetGraphic endp
 
+ExitGame proc
+	push ax
+	mov ax, 3
+	int 10h
+	mov ax, 4C00h
+	int 21h
+	pop ax
+	ret
+ExitGame endp
 
 
 main proc
 	mov ax, @data
 	mov ds, ax
 	
-	mov ah, 09h
-	lea dx, msg
-	int 21h
-	
-	mov ah, 4Ch
-	int 21h
-	
+	call SetGraphic
+	call ExitGame
 main endp
 
 end main
