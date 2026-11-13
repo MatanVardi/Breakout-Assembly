@@ -4,8 +4,8 @@
 .data
 
 	paddle_x dw 140
-	paddle_y dw 80
-	paddleWidth dw 35
+	paddle_y dw 150
+	paddleWidth dw 40
 	paddleHeight dw 07h
 
 
@@ -30,9 +30,30 @@ ExitGame proc
 	ret
 ExitGame endp
 
+CheckExit proc
+    push ax
+    mov ah, 01h      
+    int 16h
+    jz exitDone          
+
+    cmp al, 1Bh          
+    jne exitDone         
+
+    mov ah, 00h          
+    int 16h
+    call ExitGame    
+
+exitDone:
+    pop ax
+    ret
+CheckExit endp
+
+
+
+
 x equ [bp+4]
 y equ [bp+6]
-drawPaddle proc
+DrawPaddle proc
 	push bp
 	mov bp, sp
 
@@ -69,7 +90,7 @@ drawPaddle proc
 	pop dx
 	pop bp
 	ret 4
-drawPaddle endp
+DrawPaddle endp
 
 
 
@@ -78,10 +99,15 @@ main proc
 	mov ds, ax
 	
 	call SetGraphic
+	
+	
+game_loop:
 	push [paddle_y]
 	push [paddle_x]
-	call drawPaddle
-
+	call DrawPaddle
+	
+	call CheckExit
+	jmp game_loop
 main endp
 
 end main
