@@ -49,6 +49,18 @@ exitDone:
 CheckExit endp
 
 
+clearScreenGraphics proc
+	push ax
+    mov ax, 0A000h     
+    mov es, ax
+    xor di, di         
+    mov al, 0          
+    mov cx, 64000      
+    cld                
+    rep stosb          
+	pop ax
+    ret
+clearScreenGraphics endp
 
 
 x equ [bp+4]
@@ -102,6 +114,7 @@ main proc
 	
 	
 game_loop:
+	call clearScreenGraphics
 	push [paddle_y]
 	push [paddle_x]
 	call DrawPaddle
