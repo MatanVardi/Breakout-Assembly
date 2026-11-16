@@ -357,12 +357,12 @@ BallCollisionVerticalBoundaries proc
 	
 	change_x_to_left:
 	mov [ballDirX], 1
-	add [ballX], 1
+	sub [ballX], 1
 	jmp endBallCollisionProc
 
 	change_x_to_right:
 	mov [ballDirX], 2
-	sub [ballX], 1
+	add [ballX], 1
 	jmp endBallCollisionProc
 	
 	endBallCollisionProc:
@@ -375,35 +375,58 @@ ballCollisionPaddle proc
     push ax
     push dx
     push cx
-    
+
+    cmp [ballDirY], 1
+    jne endCollisionProc
+
     mov ax, [ballX]
-    
+    add ax, [ballWidth]
+    cmp ax, [paddleX]
+    jl endCollisionProc
+
+    mov ax, [ballX]
     mov dx, [paddleX]
     add dx, [paddleWidth]
     cmp ax, dx
-    jg endCollisionProc    
-    
-    cmp ax, [paddleX]
-    jl endCollisionProc     
+    jg endCollisionProc
 
     mov cx, [ballY]
-    
+    add cx, [ballWidth]
     cmp cx, [paddleY]
-    jl endCollisionProc     
-    
+    jl endCollisionProc
+
+    mov cx, [ballY]
     mov dx, [paddleY]
     add dx, [paddleHeight]
     cmp cx, dx
-    jg endCollisionProc     
+    jg endCollisionProc
 
-    mov [ballDirY], 2     
-    
+    mov [ballDirY], 2
+    mov ax, [paddleY]
+    sub ax, [ballWidth]
+    dec ax
+    mov [ballY], ax
+
 endCollisionProc:
     pop cx
     pop dx
     pop ax
     ret
-BallCollisionPaddle endp
+ballCollisionPaddle endp
+
+delay proc
+    push ax
+    push cx
+    push dx
+    mov ah, 70h
+    mov cx, 0000h    
+    mov dx, 8F45h    
+    int 15h
+    pop dx
+    pop cx
+    pop ax
+    ret
+delay endp
 
 
 main proc
@@ -431,7 +454,7 @@ game_loop:
 	call BallCollisionPaddle
 	call MoveBall
 
-	
+	call delay
 	jmp game_loop
 main endp
 
