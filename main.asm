@@ -5,10 +5,13 @@
 
 	paddleX dw 150
 	paddleY dw 180
+	ballX dw 150
+	ballY dw 100
 	velocityX dw 20
 	velocityY dw 20
 	paddleWidth dw 40
 	paddleHeight dw 07h
+	ballWidth dw 5
 	xBoundaryRight dw 260
 	xBoundaryLeft dw 10
 
@@ -131,7 +134,7 @@ DrawPaddle proc
 	mov cx, x ; X 
 	mov dx, y ; Y
 	
-	draw_paddle_left_horizontal:
+	draw_paddle:
 		mov ah, 0Ch
 		mov al, 0Fh
 		mov bh, 00h
@@ -141,14 +144,14 @@ DrawPaddle proc
 		mov ax, cx
 		sub ax, x
 		cmp ax, paddleWidth
-		jng draw_paddle_left_horizontal
+		jng draw_paddle
 		
 		mov cx, x
 		inc dx
 		mov ax, dx
 		sub ax, y
 		cmp ax, paddleHeight
-		jng draw_paddle_left_horizontal
+		jng draw_paddle
 	pop ax
 	pop bx
 	pop cx
@@ -156,6 +159,46 @@ DrawPaddle proc
 	pop bp
 	ret 4
 DrawPaddle endp
+
+x equ [bp+4]
+y equ [bp+6]
+DrawBall proc
+	push bp
+	mov bp, sp
+	
+		push dx
+	push cx
+	push bx 
+	push ax
+	
+	mov cx, x ; X 
+	mov dx, y ; Y
+	
+	draw_ball:
+		mov ah, 0Ch
+		mov al, 0Fh
+		mov bh, 00h
+		int 10h
+		
+		inc cx
+		mov ax, cx
+		sub ax, x
+		cmp ax, ballWidth
+		jng draw_ball
+		
+		mov cx, x
+		inc dx
+		mov ax, dx
+		sub ax, y
+		cmp ax, ballWidth
+		jng draw_ball
+	pop ax
+	pop bx
+	pop cx
+	pop dx
+	pop bp
+	ret 4
+DrawBall endp
 
 
 
@@ -171,6 +214,9 @@ game_loop:
 	push [paddleY]
 	push [paddleX]
 	call DrawPaddle
+	push [ballY]
+	push [ballX]
+	call DrawBall
 	call CheckExit
 	call CheckPaddleMovement
 	
