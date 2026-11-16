@@ -14,7 +14,7 @@
 	ballWidth dw 5
 	xBoundaryRight dw 260
 	xBoundaryLeft dw 10
-
+	xBallBoundaryRight dw 300
 	ballVelocityX dw 3
 	ballVelocityY dw 4
 	
@@ -88,7 +88,6 @@ CheckPaddleMovement proc
 	je move_right
 	
 	move_left: 
-		call ClearScreenGraphics
 		mov bx, [velocityX]
 		mov dx, [xBoundaryLeft]
 		cmp [paddleX], dx
@@ -100,7 +99,6 @@ CheckPaddleMovement proc
 			jmp ending
 	
 	move_right:
-		call ClearScreenGraphics
 		mov bx, [velocityX]
 		mov dx, [xBoundaryRight]
 		cmp [paddleX], dx
@@ -217,7 +215,6 @@ DrawBall endp
 MoveBallRightUp proc
 	push ax
 	push dx
-	call ClearScreenGraphics
 	mov ax, [ballVelocityX]
 	add [ballX], ax
 	mov dx, [ballVelocityY]
@@ -230,7 +227,6 @@ MoveBallRightUp endp
 MoveBallRightDown proc
 	push ax
 	push dx
-	call ClearScreenGraphics
 
 	mov ax, [ballVelocityX]
 	add [ballX], ax
@@ -244,7 +240,6 @@ MoveBallRightDown endp
 MoveBallLeftUp proc
 	push ax
 	push dx
-	call ClearScreenGraphics
 	mov ax, [ballVelocityX]
 	sub [ballX], ax
 	mov dx, [ballVelocityY]
@@ -257,7 +252,6 @@ MoveBallLeftUp endp
 MoveBallLeftDown proc
 	push ax
 	push dx
-	call ClearScreenGraphics
 	mov ax, [ballVelocityX]
 	sub [ballX], ax
 	mov dx, [ballVelocityY]
@@ -342,12 +336,35 @@ BallCollisionHorizontalBoundaries proc
 		jmp end_ball_collision_proc
 
 	subtract_lives:
+		;mov [ballX], 150
+		;mov [ballY], 100
+		
 		jmp end_ball_collision_proc
 	
 	end_ball_collision_proc:
 		pop ax
 		ret
 BallCollisionHorizontalBoundaries endp
+
+ballCollisionVerticalBoundaries proc
+	push ax
+	
+	mov ax, [ballX]
+	cmp ax, [xBallBoundaryRight]
+	jge change_ball_x_dir
+	cmp ax, [xBoundaryLeft]
+	jle change_ball_x_dir
+	jmp endProgram
+	change_ball_x_dir:
+		xor [ballDirX], 1 
+		call randomizeDirections
+		jmp endProgram
+		
+	endProgram:
+		pop ax
+		ret 
+ballCollisionVerticalBoundaries endp
+
 
 
 main proc
@@ -359,6 +376,7 @@ main proc
 
 	
 game_loop:
+	call ClearScreenGraphics
 
 	push [paddleY]
 	push [paddleX]
@@ -370,7 +388,7 @@ game_loop:
 	call CheckExit
 	call CheckPaddleMovement
 	call BallCollisionHorizontalBoundaries
-
+	call ballCollisionVerticalBoundaries 
 	
 	call MoveBall
 
