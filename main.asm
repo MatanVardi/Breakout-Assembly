@@ -3,12 +3,14 @@
 
 .data
 
-	paddleX dw 140
+	paddleX dw 150
 	paddleY dw 180
 	velocityX dw 20
 	velocityY dw 20
 	paddleWidth dw 40
 	paddleHeight dw 07h
+	xBoundaryRight dw 260
+	xBoundaryLeft dw 10
 
 
 .code 
@@ -53,6 +55,7 @@ CheckExit endp
 CheckPaddleMovement proc
 	push ax
 	push bx
+	push dx
 	
 	mov ah, 01h
 	int 16h
@@ -70,16 +73,29 @@ CheckPaddleMovement proc
 	move_left: 
 		call clearScreenGraphics
 		mov bx, [velocityX]
-		sub [paddleX], bx
+		mov dx, [xBoundaryLeft]
+		cmp [paddleX], dx
+		jg can_move_left
 		jmp ending
+
+		can_move_left:
+			sub [paddleX], bx
+			jmp ending
 	
 	move_right:
 		call clearScreenGraphics
 		mov bx, [velocityX]
-		add [paddleX], bx
+		mov dx, [xBoundaryRight]
+		cmp [paddleX], dx
+		jl can_move_right
 		jmp ending
+		
+		can_move_right:
+			add [paddleX], bx
+			jmp ending
 	
 	ending:
+		pop dx
 		pop bx 
 		pop ax
 		ret
