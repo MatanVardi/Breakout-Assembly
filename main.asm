@@ -3,8 +3,8 @@
 
 .data
 
-	paddle_x dw 140
-	paddle_y dw 150
+	paddleX dw 140
+	paddleY dw 150
 	paddleWidth dw 40
 	paddleHeight dw 07h
 
@@ -47,6 +47,29 @@ exitDone:
     pop ax
     ret
 CheckExit endp
+
+
+CheckPaddleMovement proc
+	push ax
+	push bx
+	push dx
+	
+	mov ah, 01h
+	int 16h
+	jz ending
+	
+	mon ah, 00h
+	int 16h
+			
+	
+	
+	
+	ending:
+		pop dx
+		pop bx 
+		pop ax
+		ret
+CheckPaddleMovement endp
 
 
 clearScreenGraphics proc
@@ -114,12 +137,14 @@ main proc
 	
 	
 game_loop:
+
 	call clearScreenGraphics
-	push [paddle_y]
-	push [paddle_x]
+	push [paddleY]
+	push [paddleX]
 	call DrawPaddle
 	
 	call CheckExit
+	
 	jmp game_loop
 main endp
 
