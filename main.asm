@@ -200,6 +200,79 @@ DrawBall proc
 	ret 4
 DrawBall endp
 
+moveBallRightUp proc
+	push ax
+	push dx
+	mov ax, [ballVelocityX]
+	add [ballX], ax
+	mov dx, [ballVelocityY]
+	sub [ballY], dx
+	pop dx
+	pop ax
+	ret
+moveBallRightUp endp
+
+moveBallRightDown proc
+	push ax
+	push dx
+	mov ax, [ballVelocityX]
+	add [ballX], ax
+	mov dx, [ballVelocityY]
+	add [ballY], dx
+	pop dx
+	pop ax
+	ret
+moveBallRightDown endp
+
+moveBallLeftUp proc
+	push ax
+	push dx
+	mov ax, [ballVelocityX]
+	sub [ballX], ax
+	mov dx, [ballVelocityY]
+	sub [ballY], dx
+	pop dx
+	pop ax
+	ret
+moveBallLeftUp endp
+
+moveBallLeftDown proc
+	push ax
+	push dx
+	mov ax, [ballVelocityX]
+	sub [ballX], ax
+	mov dx, [ballVelocityY]
+	add [ballY], dx
+	pop dx
+	pop ax
+	ret
+moveBallLeftDown endp
+
+randomizeDirections proc
+    push ax
+    push cx
+    
+    mov ah, 00h
+    int 1Ah         
+    
+    mov al, dl      
+    shr al, 2      
+    and al, 01h
+    inc al         
+    mov [ballDirX], al
+    
+    mov al, dl
+    shr al, 4       
+    and al, 01h
+    inc al         
+    mov [ballDirY], al
+    
+    pop cx
+    pop ax
+    ret
+randomizeDirections endp
+
+
 
 
 main proc
