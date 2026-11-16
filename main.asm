@@ -336,9 +336,8 @@ BallCollisionHorizontalBoundaries proc
 		jmp end_ball_collision_proc
 
 	subtract_lives:
-		;mov [ballX], 150
-		;mov [ballY], 100
-		
+		mov [ballDirY], 2
+		sub [ballY], 1
 		jmp end_ball_collision_proc
 	
 	end_ball_collision_proc:
@@ -347,22 +346,28 @@ BallCollisionHorizontalBoundaries proc
 BallCollisionHorizontalBoundaries endp
 
 ballCollisionVerticalBoundaries proc
-	push ax
+	push ax 
 	
 	mov ax, [ballX]
 	cmp ax, [xBallBoundaryRight]
-	jge change_ball_x_dir
+	jge change_x_to_left
 	cmp ax, [xBoundaryLeft]
-	jle change_ball_x_dir
-	jmp endProgram
-	change_ball_x_dir:
-		xor [ballDirX], 1 
-		call randomizeDirections
-		jmp endProgram
-		
-	endProgram:
-		pop ax
-		ret 
+	jle change_x_to_right
+	jmp endBallCollisionProc
+	
+	change_x_to_left:
+	mov [ballDirX], 1
+	add [ballX], 1
+	jmp endBallCollisionProc
+
+	change_x_to_right:
+	mov [ballDirX], 2
+	sub [ballX], 1
+	jmp endBallCollisionProc
+	
+	endBallCollisionProc:
+	pop ax
+	ret
 ballCollisionVerticalBoundaries endp
 
 
