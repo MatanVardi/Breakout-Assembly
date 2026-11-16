@@ -24,9 +24,9 @@
 	ballDirX db 1
 	ballDirY db 1
 	
-	topBoundary dw 10
+	topBoundary dw 5
 	downBoundary dw 160
-	downBoundaryCollision dw 180
+	downBoundaryCollision dw 190
 	topBoundaryCollision dw 5
 
 
@@ -345,7 +345,7 @@ BallCollisionHorizontalBoundaries proc
 		ret
 BallCollisionHorizontalBoundaries endp
 
-ballCollisionVerticalBoundaries proc
+BallCollisionVerticalBoundaries proc
 	push ax 
 	
 	mov ax, [ballX]
@@ -368,8 +368,42 @@ ballCollisionVerticalBoundaries proc
 	endBallCollisionProc:
 	pop ax
 	ret
-ballCollisionVerticalBoundaries endp
+BallCollisionVerticalBoundaries endp
 
+
+ballCollisionPaddle proc
+    push ax
+    push dx
+    push cx
+    
+    mov ax, [ballX]
+    
+    mov dx, [paddleX]
+    add dx, [paddleWidth]
+    cmp ax, dx
+    jg endCollisionProc    
+    
+    cmp ax, [paddleX]
+    jl endCollisionProc     
+
+    mov cx, [ballY]
+    
+    cmp cx, [paddleY]
+    jl endCollisionProc     
+    
+    mov dx, [paddleY]
+    add dx, [paddleHeight]
+    cmp cx, dx
+    jg endCollisionProc     
+
+    mov [ballDirY], 2     
+    
+endCollisionProc:
+    pop cx
+    pop dx
+    pop ax
+    ret
+BallCollisionPaddle endp
 
 
 main proc
@@ -393,8 +427,8 @@ game_loop:
 	call CheckExit
 	call CheckPaddleMovement
 	call BallCollisionHorizontalBoundaries
-	call ballCollisionVerticalBoundaries 
-	
+	call BallCollisionVerticalBoundaries 
+	call BallCollisionPaddle
 	call MoveBall
 
 	
