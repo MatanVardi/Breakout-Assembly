@@ -15,6 +15,20 @@
 	xBoundaryRight dw 260
 	xBoundaryLeft dw 10
 
+	ballVelocityX dw 3
+	ballVelocityY dw 4
+	
+	;Will result in either 1 or 2 for the direction
+	;(can be right direction for the x and the y would either be 1 which is down and we use add or 2 for sub
+	; 1 - is left or down and 2 is right or up
+	ballDirX db 1
+	ballDirY db 1
+	
+	topBoundary dw 10
+	downBoundary dw 160
+	downBoundaryCollision dw 180
+	topBoundaryCollision dw 5
+
 
 .code 
 
@@ -74,7 +88,7 @@ CheckPaddleMovement proc
 	je move_right
 	
 	move_left: 
-		call clearScreenGraphics
+		call ClearScreenGraphics
 		mov bx, [velocityX]
 		mov dx, [xBoundaryLeft]
 		cmp [paddleX], dx
@@ -86,7 +100,7 @@ CheckPaddleMovement proc
 			jmp ending
 	
 	move_right:
-		call clearScreenGraphics
+		call ClearScreenGraphics
 		mov bx, [velocityX]
 		mov dx, [xBoundaryRight]
 		cmp [paddleX], dx
@@ -105,7 +119,7 @@ CheckPaddleMovement proc
 CheckPaddleMovement endp
 
 
-clearScreenGraphics proc
+ClearScreenGraphics proc
 	push ax
     mov ax, 0A000h     
     mov es, ax
@@ -116,7 +130,7 @@ clearScreenGraphics proc
     rep stosb          
 	pop ax
     ret
-clearScreenGraphics endp
+ClearScreenGraphics endp
 
 
 x equ [bp+4]
@@ -200,9 +214,10 @@ DrawBall proc
 	ret 4
 DrawBall endp
 
-moveBallRightUp proc
+MoveBallRightUp proc
 	push ax
 	push dx
+	call ClearScreenGraphics
 	mov ax, [ballVelocityX]
 	add [ballX], ax
 	mov dx, [ballVelocityY]
@@ -210,11 +225,13 @@ moveBallRightUp proc
 	pop dx
 	pop ax
 	ret
-moveBallRightUp endp
+MoveBallRightUp endp
 
-moveBallRightDown proc
+MoveBallRightDown proc
 	push ax
 	push dx
+	call ClearScreenGraphics
+
 	mov ax, [ballVelocityX]
 	add [ballX], ax
 	mov dx, [ballVelocityY]
@@ -222,11 +239,12 @@ moveBallRightDown proc
 	pop dx
 	pop ax
 	ret
-moveBallRightDown endp
+MoveBallRightDown endp
 
-moveBallLeftUp proc
+MoveBallLeftUp proc
 	push ax
 	push dx
+	call ClearScreenGraphics
 	mov ax, [ballVelocityX]
 	sub [ballX], ax
 	mov dx, [ballVelocityY]
@@ -234,11 +252,12 @@ moveBallLeftUp proc
 	pop dx
 	pop ax
 	ret
-moveBallLeftUp endp
+MoveBallLeftUp endp
 
-moveBallLeftDown proc
+MoveBallLeftDown proc
 	push ax
 	push dx
+	call ClearScreenGraphics
 	mov ax, [ballVelocityX]
 	sub [ballX], ax
 	mov dx, [ballVelocityY]
@@ -246,9 +265,9 @@ moveBallLeftDown proc
 	pop dx
 	pop ax
 	ret
-moveBallLeftDown endp
+MoveBallLeftDown endp
 
-randomizeDirections proc
+RandomizeDirections proc
     push ax
     push cx
     
@@ -270,9 +289,65 @@ randomizeDirections proc
     pop cx
     pop ax
     ret
-randomizeDirections endp
+RandomizeDirections endp
 
+MoveBall proc
+	cmp [ballDirX], 1
+	je left_x_val
+	jmp right_x_val
+	
+	left_x_val:
+		cmp [ballDirY], 1
+		je down_y_val
+		jmp up_y_val
+	
+	down_y_val:
+		call moveBallLeftDown
+		jmp endingProc
 
+	up_y_val:
+		call moveBallLeftUp
+		jmp endingProc
+
+	right_x_val:
+		cmp [ballDirY], 1
+		je down_y_val_second
+		jmp up_y_val_second
+	
+	down_y_val_second:
+		call moveBallRightDown
+		jmp endingProc
+		
+	up_y_val_second:
+		call moveBallRightUp
+		jmp endingProc
+
+	endingProc:
+		ret
+MoveBall endp
+
+BallCollisionHorizontalBoundaries proc
+	push ax 
+	
+	mov ax, [ballY]
+	cmp ax, [topBoundary]
+	jle change_y_to_down
+	cmp ax, [downBoundaryCollision]
+	jge subtract_lives
+	jmp end_ball_collision_proc
+	
+	change_y_to_down:
+		mov [ballDirY], 1
+		add [ballY], 1
+		jmp end_ball_collision_proc
+
+	subtract_lives:
+		jmp end_ball_collision_proc
+	
+	end_ball_collision_proc:
+		pop ax
+		ret
+BallCollisionHorizontalBoundaries endp
 
 
 main proc
@@ -280,7 +355,8 @@ main proc
 	mov ds, ax
 	
 	call SetGraphic
-	
+	call randomizeDirections
+
 	
 game_loop:
 
@@ -290,8 +366,14 @@ game_loop:
 	push [ballY]
 	push [ballX]
 	call DrawBall
+	
 	call CheckExit
 	call CheckPaddleMovement
+	call BallCollisionHorizontalBoundaries
+
+	
+	call MoveBall
+
 	
 	jmp game_loop
 main endp
