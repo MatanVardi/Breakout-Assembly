@@ -28,7 +28,9 @@
 	downBoundary dw 160
 	downBoundaryCollision dw 190
 	topBoundaryCollision dw 5
-
+	
+	player_lives dw 3
+	lives_text db 'Remaining Lives: $'
 
 .code 
 
@@ -322,6 +324,7 @@ MoveBall endp
 
 BallCollisionHorizontalBoundaries proc
 	push ax 
+	push bx
 	
 	mov ax, [ballY]
 	cmp ax, [topBoundary]
@@ -336,11 +339,18 @@ BallCollisionHorizontalBoundaries proc
 		jmp end_ball_collision_proc
 
 	subtract_lives:
-		mov [ballDirY], 2
-		sub [ballY], 1
+		cmp [player_lives], 0
+		je end_game
+		call DisplayLives
+		dec [player_lives]
 		jmp end_ball_collision_proc
+
+		end_game:
+			call ExitGame
+		
 	
 	end_ball_collision_proc:
+		pop bx
 		pop ax
 		ret
 BallCollisionHorizontalBoundaries endp
@@ -371,7 +381,7 @@ BallCollisionVerticalBoundaries proc
 BallCollisionVerticalBoundaries endp
 
 
-ballCollisionPaddle proc
+BallCollisionPaddle proc
     push ax
     push dx
     push cx
@@ -412,7 +422,7 @@ endCollisionProc:
     pop dx
     pop ax
     ret
-ballCollisionPaddle endp
+BallCollisionPaddle endp
 
 delay proc
     push ax
@@ -427,6 +437,68 @@ delay proc
     pop ax
     ret
 delay endp
+
+
+DisplayLives proc near
+    push ax
+    push bx
+    push cx
+    push dx
+    
+    ; Position for score display (top-left corner)
+    mov ah, 02h      ; Set cursor position
+    mov bh, 0       ; Page number
+    mov dh, 24       ; Row 24 (bottom row - screen is 25 rows 0-24)
+    mov dl, 0        ; Column 0 (left)
+    int 10h
+    
+    ; Display the text
+    mov ah, 09h      ; Display string function
+    mov dx, offset lives_text
+    int 21h
+    
+    ; Convert score to ASCII and display
+    mov ax, [player_lives]
+    call DisplayNumber
+    
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+DisplayLives endp
+
+DisplayNumber proc near
+    push ax
+    push bx
+    push cx
+    push dx
+    
+    ; Convert number in AX to decimal digits
+    mov bx, 10       ; Divisor
+    xor cx, cx       ; Digit counter
+    
+convert_loop:
+    xor dx, dx       ; Clear DX for division
+    div bx           ; AX / 10, quotient in AX, remainder in DX
+    push dx          ; Save remainder (current digit)
+    inc cx           ; Increment digit counter
+    test ax, ax      ; Check if quotient is zero
+    jnz convert_loop ; If not zero, continue loop
+    
+display_loop:
+    pop dx           ; Get digit
+    add dl, '0'      ; Convert to ASCII
+    mov ah, 02h      ; Function to display character
+    int 21h
+    loop display_loop
+    
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+DisplayNumber endp
 
 
 main proc
