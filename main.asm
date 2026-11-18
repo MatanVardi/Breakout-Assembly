@@ -30,8 +30,9 @@
 	topBoundaryCollision dw 5
 	
 	player_lives dw 3
-	lives_text db 'Remaining Lives: $'
-
+	lives_text db 'Remaining Lives: ', 0
+	paddle_bg_buffer db 41*8 dup(0)  
+	ball_bg_buffer   db 6*6 dup(0)   
 .code 
 
 SetGraphic proc 
@@ -88,6 +89,7 @@ CheckPaddleMovement proc
 	
 	cmp al, 'd'
 	je move_right
+	jmp ending 
 	
 	move_left: 
 		mov bx, [velocityX]
@@ -323,32 +325,35 @@ MoveBall proc
 MoveBall endp
 
 BallCollisionHorizontalBoundaries proc
-	push ax 
+	push ax
 	push bx
-	
+
 	mov ax, [ballY]
 	cmp ax, [topBoundary]
 	jle change_y_to_down
 	cmp ax, [downBoundaryCollision]
 	jge subtract_lives
 	jmp end_ball_collision_proc
-	
+
 	change_y_to_down:
 		mov [ballDirY], 1
 		add [ballY], 1
 		jmp end_ball_collision_proc
 
 	subtract_lives:
+		dec [player_lives]
+		call DisplayLives
 		cmp [player_lives], 0
 		je end_game
-		call DisplayLives
-		dec [player_lives]
+
+		mov [ballX], 150
+		mov [ballY], 100
+		mov [ballDirY], 2
 		jmp end_ball_collision_proc
 
-		end_game:
-			call ExitGame
-		
-	
+	end_game:
+		call ExitGame
+
 	end_ball_collision_proc:
 		pop bx
 		pop ax
@@ -428,7 +433,7 @@ delay proc
     push ax
     push cx
     push dx
-    mov ah, 70h
+    mov ah, 86h
     mov cx, 0000h    
     mov dx, 8F45h    
     int 15h
@@ -444,23 +449,34 @@ DisplayLives proc near
     push bx
     push cx
     push dx
+    push si
     
-    ; Position for score display (top-left corner)
+    ; Position cursor (Row 0, Col 0 = top-left corner)
     mov ah, 02h      ; Set cursor position
-    mov bh, 0       ; Page number
-    mov dh, 24       ; Row 24 (bottom row - screen is 25 rows 0-24)
-    mov dl, 0        ; Column 0 (left)
+    mov bh, 0        ; Page number
+    mov dh, 0        ; Row 0 (change to 24 if you still want bottom-left)
+    mov dl, 0        ; Column 0
     int 10h
     
-    ; Display the text
-    mov ah, 09h      ; Display string function
-    mov dx, offset lives_text
-    int 21h
-    
-    ; Convert score to ASCII and display
+    ; Display the label using BIOS (supports custom color)
+    ; Note: Make sure lives_text ends with 0 instead of '$'
+    mov si, offset lives_text
+    mov bl, 0Ch      ; Color: 0Ch = Light Red (0Eh = Yellow, 0Fh = White)
+print_label:
+    mov al, [si]
+    cmp al, 0        ; Check for null terminator
+    je print_num
+    mov ah, 0Eh      ; BIOS Teletype output
+    int 10h
+    inc si
+    jmp print_label
+
+print_num:
+    ; Convert lives to ASCII and display
     mov ax, [player_lives]
     call DisplayNumber
     
+    pop si
     pop dx
     pop cx
     pop bx
@@ -474,24 +490,29 @@ DisplayNumber proc near
     push cx
     push dx
     
-    ; Convert number in AX to decimal digits
     mov bx, 10       ; Divisor
     xor cx, cx       ; Digit counter
     
 convert_loop:
     xor dx, dx       ; Clear DX for division
     div bx           ; AX / 10, quotient in AX, remainder in DX
-    push dx          ; Save remainder (current digit)
+    push dx          ; Save remainder
     inc cx           ; Increment digit counter
     test ax, ax      ; Check if quotient is zero
-    jnz convert_loop ; If not zero, continue loop
+    jnz convert_loop
     
+    mov bl, 0Fh      ; Color for the digits (0Fh = Bright White)
+    xor bh, bh       ; Page 0
 display_loop:
-    pop dx           ; Get digit
-    add dl, '0'      ; Convert to ASCII
-    mov ah, 02h      ; Function to display character
-    int 21h
+    pop ax           ; Get digit into AL
+    add al, '0'      ; Convert to ASCII
+    mov ah, 0Eh      ; BIOS Teletype output (advances cursor automatically)
+    int 10h
     loop display_loop
+
+    ; Print a trailing space to erase leftover digits (e.g., 10 -> 9 )
+    mov ax, 0E20h    ; AH = 0Eh, AL = ' ' (20h)
+    int 10h
     
     pop dx
     pop cx
@@ -500,6 +521,173 @@ display_loop:
     ret
 DisplayNumber endp
 
+SaveArea proc
+	push bp
+	mov bp, sp
+	push ax
+	push cx
+	push dx
+	push si
+	push di
+	push es
+
+	mov ax, 0A000h
+	mov es, ax
+	mov ax, 320
+	mul word ptr [bp+6]
+	add ax, [bp+4]
+	mov si, ax
+	mov di, [bp+12]
+
+	mov dx, [bp+10]
+save_area_row:
+	push si
+	mov cx, [bp+8]
+save_area_col:
+	mov al, es:[si]
+	mov [di], al
+	inc si
+	inc di
+	loop save_area_col
+	pop si
+	add si, 320
+	dec dx
+	jnz save_area_row
+
+	pop es
+	pop di
+	pop si
+	pop dx
+	pop cx
+	pop ax
+	pop bp
+	ret 10
+SaveArea endp
+
+RestoreArea proc
+	push bp
+	mov bp, sp
+	push ax
+	push cx
+	push dx
+	push si
+	push di
+	push es
+
+	mov ax, 0A000h
+	mov es, ax
+	mov ax, 320
+	mul word ptr [bp+6]
+	add ax, [bp+4]
+	mov di, ax
+	mov si, [bp+12]
+
+	mov dx, [bp+10]
+restore_area_row:
+	push di
+	mov cx, [bp+8]
+restore_area_col:
+	mov al, [si]
+	mov es:[di], al
+	inc si
+	inc di
+	loop restore_area_col
+	pop di
+	add di, 320
+	dec dx
+	jnz restore_area_row
+
+	pop es
+	pop di
+	pop si
+	pop dx
+	pop cx
+	pop ax
+	pop bp
+	ret 10
+RestoreArea endp
+
+SavePaddleBg proc
+	push ax
+	mov ax, offset paddle_bg_buffer
+	push ax
+	mov ax, [paddleHeight]
+	inc ax
+	push ax
+	mov ax, [paddleWidth]
+	inc ax
+	push ax
+	push [paddleY]
+	push [paddleX]
+	call SaveArea
+	pop ax
+	ret
+SavePaddleBg endp
+
+RestorePaddleBg proc
+	push ax
+	mov ax, offset paddle_bg_buffer
+	push ax
+	mov ax, [paddleHeight]
+	inc ax
+	push ax
+	mov ax, [paddleWidth]
+	inc ax
+	push ax
+	push [paddleY]
+	push [paddleX]
+	call RestoreArea
+	pop ax
+	ret
+RestorePaddleBg endp
+
+SaveBallBg proc
+	push ax
+	mov ax, offset ball_bg_buffer
+	push ax
+	mov ax, [ballWidth]
+	inc ax
+	push ax          ; height
+	push ax          ; width
+	push [ballY]
+	push [ballX]
+	call SaveArea
+	pop ax
+	ret
+SaveBallBg endp
+
+RestoreBallBg proc
+	push ax
+	mov ax, offset ball_bg_buffer
+	push ax
+	mov ax, [ballWidth]
+	inc ax
+	push ax
+	push ax
+	push [ballY]
+	push [ballX]
+	call RestoreArea
+	pop ax
+	ret
+RestoreBallBg endp
+
+vsync proc
+	push ax
+	push dx
+	mov dx, 3DAh
+wait_retrace_end:
+	in al, dx
+	test al, 08h
+	jnz wait_retrace_end
+wait_retrace_start:
+	in al, dx
+	test al, 08h
+	jz wait_retrace_start
+	pop dx
+	pop ax
+	ret
+vsync endp
+
 
 main proc
 	mov ax, @data
@@ -507,26 +695,40 @@ main proc
 	
 	call SetGraphic
 	call randomizeDirections
+	call DisplayLives
 
-	
-game_loop:
-	call ClearScreenGraphics
-
+	call SavePaddleBg
 	push [paddleY]
 	push [paddleX]
 	call DrawPaddle
+	call SaveBallBg
 	push [ballY]
 	push [ballX]
 	call DrawBall
-	
+
+game_loop:
+	call delay
+	call vsync
+
+	call RestoreBallBg       
+	call RestorePaddleBg
+
 	call CheckExit
 	call CheckPaddleMovement
 	call BallCollisionHorizontalBoundaries
-	call BallCollisionVerticalBoundaries 
+	call BallCollisionVerticalBoundaries
 	call BallCollisionPaddle
 	call MoveBall
 
-	call delay
+	call SavePaddleBg        
+	push [paddleY]
+	push [paddleX]
+	call DrawPaddle
+	call SaveBallBg
+	push [ballY]
+	push [ballX]
+	call DrawBall
+
 	jmp game_loop
 main endp
 
