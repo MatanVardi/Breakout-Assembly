@@ -11,6 +11,7 @@
 	velocityY dw 20
 	paddleWidth dw 40
 	paddleHeight dw 07h
+	
 	ballWidth dw 5
 	xBoundaryRight dw 260
 	xBoundaryLeft dw 10
@@ -24,13 +25,27 @@
 	ballDirX db 1
 	ballDirY db 1
 	
+	x_blocks_pos dw 5, 50, 95, 140, 185, 230, 275
+	X_COUNT equ ($ - x_blocks_pos) / 2
+
+	y_blocks_pos dw 20, 40, 60, 80
+	Y_COUNT equ ($ - y_blocks_pos) / 2
+
+	blockWidth  equ 40
+	blockHeight equ 15
+	blocks_alive db X_COUNT * Y_COUNT dup(1)   ; 1 = block exists, 0 = destroyed
+	blocks_left dw X_COUNT * Y_COUNT
+	colors dw 28h, 2Ah, 2Ch, 2Fh
+	
 	topBoundary dw 5
 	downBoundary dw 160
 	downBoundaryCollision dw 190
 	topBoundaryCollision dw 5
 	
+	
 	player_lives dw 3
 	lives_text db 'Remaining Lives: ', 0
+	win_text db 'You won the game', 0
 	paddle_bg_buffer db 41*8 dup(0)  
 	ball_bg_buffer   db 6*6 dup(0)   
 .code 
@@ -175,6 +190,80 @@ DrawPaddle proc
 	pop bp
 	ret 4
 DrawPaddle endp
+
+x equ [bp+4]
+y equ [bp+6]
+color equ [bp+8]
+DrawBlock proc
+
+push bp
+	mov bp, sp
+	push dx
+	push cx
+	push bx 
+	push ax
+	
+	
+	mov cx, x ; X 
+	mov dx, y ; Y
+	
+	draw_block:
+		mov ah, 0Ch
+		mov al, color
+		mov bh, 00h
+		int 10h
+		
+		inc cx
+		mov ax, cx
+		sub ax, x
+		cmp ax, blockWidth
+		jng draw_block
+		
+		mov cx, x
+		inc dx
+		mov ax, dx
+		sub ax, y
+		cmp ax, blockHeight
+		jng draw_block
+	pop ax
+	pop bx
+	pop cx
+	pop dx
+	pop bp
+	ret 6
+
+DrawBlock endp
+
+
+DrawBlocks proc
+	push si
+	push di
+
+	xor di, di                      ; DI = index into y_blocks_pos
+
+rows_loop:                          ; ---- outer loop: each Y ----
+	xor si, si                      ; SI = index into x_blocks_pos (restart every row)
+
+cols_loop:                          ; ---- inner loop: each X ----
+	push [colors + di]
+	push [y_blocks_pos + di]        ; pushed first  -> [bp+6] = y
+	push [x_blocks_pos + si]        ; pushed second -> [bp+4] = x
+	call DrawBlock                  ; DrawBlock does "ret 4", which removes both
+
+	add si, 2                       ; next X (dw = 2 bytes)
+	cmp si, X_COUNT * 2
+	jb  cols_loop
+
+	add di, 2                       ; next Y
+	cmp di, Y_COUNT * 2
+	jb  rows_loop
+
+	pop di
+	pop si
+	ret
+DrawBlocks endp
+
+
 
 x equ [bp+4]
 y equ [bp+6]
@@ -385,6 +474,68 @@ BallCollisionVerticalBoundaries proc
 	ret
 BallCollisionVerticalBoundaries endp
 
+CheckBlockCollision proc
+	push ax
+	push bx
+	push si
+	push di
+
+	xor bx, bx                      
+	xor di, di                      
+coll_rows:
+	xor si, si                      
+coll_cols:
+	cmp [blocks_alive + bx], 0      
+	je  coll_next
+
+	mov ax, [ballX]
+	add ax, ballWidth
+	cmp ax, [x_blocks_pos + si]
+	jle coll_next
+
+	mov ax, [x_blocks_pos + si]
+	add ax, blockWidth
+	cmp [ballX], ax
+	jge coll_next
+
+	mov ax, [ballY]
+	add ax, ballWidth
+	cmp ax, [y_blocks_pos + di]
+	jle coll_next
+
+	mov ax, [y_blocks_pos + di]
+	add ax, blockHeight
+	cmp [ballY], ax
+	jge coll_next
+
+	mov [blocks_alive + bx], 0      
+	xor [ballDirY], 3                
+
+	mov ax, 0
+	push ax                         
+	push [y_blocks_pos + di]       
+	push [x_blocks_pos + si]        
+	call DrawBlock
+
+	jmp coll_done                   
+
+coll_next:
+	inc bx                         
+	add si, 2                       
+	cmp si, X_COUNT * 2
+	jb  coll_cols
+
+	add di, 2                       
+	cmp di, Y_COUNT * 2
+	jb  coll_rows
+
+coll_done:
+	pop di
+	pop si
+	pop bx
+	pop ax
+	ret
+CheckBlockCollision endp
 
 BallCollisionPaddle proc
     push ax
@@ -696,6 +847,7 @@ main proc
 	call SetGraphic
 	call randomizeDirections
 	call DisplayLives
+	call DrawBlocks
 
 	call SavePaddleBg
 	push [paddleY]
@@ -715,6 +867,7 @@ game_loop:
 
 	call CheckExit
 	call CheckPaddleMovement
+	call CheckBlockCollision
 	call BallCollisionHorizontalBoundaries
 	call BallCollisionVerticalBoundaries
 	call BallCollisionPaddle
@@ -724,11 +877,11 @@ game_loop:
 	push [paddleY]
 	push [paddleX]
 	call DrawPaddle
+	
 	call SaveBallBg
 	push [ballY]
 	push [ballX]
 	call DrawBall
-
 	jmp game_loop
 main endp
 
