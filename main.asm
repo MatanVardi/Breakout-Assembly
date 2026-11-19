@@ -45,7 +45,7 @@
 	
 	player_lives dw 3
 	lives_text db 'Remaining Lives: ', 0
-	win_text db 'You won the game', 0
+	win_text db 'You Won!', 0
 	paddle_bg_buffer db 41*8 dup(0)  
 	ball_bg_buffer   db 6*6 dup(0)   
 .code 
@@ -641,39 +641,30 @@ print_num:
 DisplayLives endp
 
 DisplayWin proc
-    push ax
-    push bx
-    push cx
-    push dx
-    push si
-    
-    ; Position cursor (Row 0, Col 0 = top-left corner)
-    mov ah, 02h      ; Set cursor position
-    mov bh, 0        ; Page number
-    mov dh, 12        ; Row 0 (change to 24 if you still want bottom-left)
-    mov dl, 12        ; Column 0
+    call ClearScreenGraphics
+
+    mov ah, 02h
+    mov bh, 0
+    mov dh, 12
+    mov dl, 16
     int 10h
-    
+
     mov si, offset win_text
-    mov bl, 0Fh      
+    mov bl, 0Fh
 print_label_of_win:
     mov al, [si]
-    cmp al, 0        ; Check for null terminator
-    mov ah, 0Eh      ; BIOS Teletype output
+    cmp al, 0
+    je  wait_key
+    mov ah, 0Eh
     int 10h
     inc si
     jmp print_label_of_win
 
-    
-    pop si
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-    ret
+wait_key:
+    mov ah, 00h
+    int 16h
+    call ExitGame
 DisplayWin endp
-
-
 
 DisplayNumber proc near
     push ax
