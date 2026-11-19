@@ -517,6 +517,11 @@ coll_cols:
 	push [x_blocks_pos + si]        
 	call DrawBlock
 
+	dec [blocks_left]
+	jnz coll_done
+	call DisplayWin         
+
+
 	jmp coll_done                   
 
 coll_next:
@@ -634,6 +639,41 @@ print_num:
     pop ax
     ret
 DisplayLives endp
+
+DisplayWin proc
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    
+    ; Position cursor (Row 0, Col 0 = top-left corner)
+    mov ah, 02h      ; Set cursor position
+    mov bh, 0        ; Page number
+    mov dh, 12        ; Row 0 (change to 24 if you still want bottom-left)
+    mov dl, 12        ; Column 0
+    int 10h
+    
+    mov si, offset win_text
+    mov bl, 0Fh      
+print_label_of_win:
+    mov al, [si]
+    cmp al, 0        ; Check for null terminator
+    mov ah, 0Eh      ; BIOS Teletype output
+    int 10h
+    inc si
+    jmp print_label_of_win
+
+    
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+DisplayWin endp
+
+
 
 DisplayNumber proc near
     push ax
